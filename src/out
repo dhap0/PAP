@@ -1,0 +1,61 @@
+In file included from libminiomp.h:21:
+single.h:4:21: error: expected ‘:’, ‘,’, ‘;’, ‘}’ or ‘__attribute__’ before ‘barrier’
+    4 |   pthread_barrier_t barrier,
+      |                     ^~~~~~~
+In file included from libminiomp.h:21,
+                 from libminiomp.c:1:
+single.h:4:21: error: expected ‘:’, ‘,’, ‘;’, ‘}’ or ‘__attribute__’ before ‘barrier’
+    4 |   pthread_barrier_t barrier,
+      |                     ^~~~~~~
+libminiomp.c: In function ‘fini_miniomp’:
+libminiomp.c:31:2: error: too many arguments to function ‘pthread_mutex_destroy’
+   31 |  pthread_mutex_destroy(&miniomp_named_lock, NULL);
+      |  ^~~~~~~~~~~~~~~~~~~~~
+In file included from libminiomp.h:7,
+                 from libminiomp.c:1:
+/usr/include/pthread.h:755:12: note: declared here
+  755 | extern int pthread_mutex_destroy (pthread_mutex_t *__mutex)
+      |            ^~~~~~~~~~~~~~~~~~~~~
+In file included from libminiomp.h:21,
+                 from env.c:2:
+single.h:4:21: error: expected ‘:’, ‘,’, ‘;’, ‘}’ or ‘__attribute__’ before ‘barrier’
+    4 |   pthread_barrier_t barrier,
+      |                     ^~~~~~~
+In file included from libminiomp.h:21,
+                 from intrinsic.c:1:
+single.h:4:21: error: expected ‘:’, ‘,’, ‘;’, ‘}’ or ‘__attribute__’ before ‘barrier’
+    4 |   pthread_barrier_t barrier,
+      |                     ^~~~~~~
+In file included from libminiomp.h:21,
+                 from parallel.c:1:
+single.h:4:21: error: expected ‘:’, ‘,’, ‘;’, ‘}’ or ‘__attribute__’ before ‘barrier’
+    4 |   pthread_barrier_t barrier,
+      |                     ^~~~~~~
+parallel.c: In function ‘GOMP_parallel’:
+parallel.c:39:38: error: ‘miniomp_single_t’ has no member named ‘barrier’
+   39 |  pthread_barrier_init(&miniomp_single.barrier, NULL, nthreads);
+      |                                      ^
+In file included from libminiomp.h:21,
+                 from synchronization.c:1:
+single.h:4:21: error: expected ‘:’, ‘,’, ‘;’, ‘}’ or ‘__attribute__’ before ‘barrier’
+    4 |   pthread_barrier_t barrier,
+      |                     ^~~~~~~
+In file included from libminiomp.h:21,
+                 from single.c:1:
+single.h:4:21: error: expected ‘:’, ‘,’, ‘;’, ‘}’ or ‘__attribute__’ before ‘barrier’
+    4 |   pthread_barrier_t barrier,
+      |                     ^~~~~~~
+single.c: In function ‘GOMP_single_start’:
+single.c:14:20: error: ‘miniomp_single_t’ has no member named ‘count’
+   14 |  if (miniomp_single.count == 0)
+      |                    ^
+single.c:18:16: error: ‘miniomp_single_t’ has no member named ‘count’
+   18 |  miniomp_single.count++;
+      |                ^
+single.c:20:38: error: ‘miniomp_single_t’ has no member named ‘barrier’
+   20 |  pthread_barrier_wait(&miniomp_single.barrier);
+      |                                      ^
+single.c:21:16: error: ‘miniomp_single_t’ has no member named ‘count’
+   21 |  miniomp_single.count = 0;
+      |                ^
+make: *** [libminiomp.so] Error 1

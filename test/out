@@ -1,0 +1,72 @@
+mini-omp is being initialized
+Setting nthreads_var ICV to 2
+Starting a parallel region using 2 threads
+count=0, val=1, tid=0
+count=1, val=0, tid=1
+count=0, val=1, tid=1
+Hello! I'm thread 0 in first loop - iteration 0
+count=0, val=1, tid=0
+Hello! I'm thread 0 in first loop - iteration 1
+Hello! I'm thread 1 in first loop - iteration 1
+count=0, val=1, tid=0
+count=1, val=0, tid=1
+count=0, val=1, tid=1
+Hello! I'm thread 0 in first loop - iteration 2
+count=0, val=1, tid=0
+Hello! I'm thread 0 in first loop - iteration 3
+Hello! I'm thread 1 in first loop - iteration 3
+count=0, val=1, tid=1
+count=1, val=0, tid=0
+count=0, val=1, tid=0
+Hello! I'm thread 1 in first loop - iteration 4
+count=0, val=1, tid=1
+Hello! I'm thread 1 in first loop - iteration 5
+Hello! I'm thread 0 in first loop - iteration 5
+count=0, val=1, tid=0
+count=1, val=0, tid=1
+count=0, val=1, tid=1
+Hello! I'm thread 0 in first loop - iteration 6
+count=0, val=1, tid=0
+Hello! I'm thread 0 in first loop - iteration 7
+Hello! I'm thread 1 in first loop - iteration 7
+count=0, val=1, tid=0
+count=1, val=0, tid=1
+count=0, val=1, tid=1
+Hello! I'm thread 0 in first loop - iteration 8
+count=0, val=1, tid=0
+Hello! I'm thread 0 in first loop - iteration 9
+Hello! I'm thread 1 in first loop - iteration 9
+count=0, val=1, tid=1
+count=1, val=0, tid=0
+Hello! I'm thread 1 in second loop - iteration 0
+count=0, val=1, tid=1
+count=1, val=0, tid=0
+Hello! I'm thread 1 in second loop - iteration 1
+count=0, val=1, tid=1
+count=1, val=0, tid=0
+Hello! I'm thread 1 in second loop - iteration 2
+count=0, val=1, tid=1
+count=1, val=0, tid=0
+Hello! I'm thread 1 in second loop - iteration 3
+count=0, val=1, tid=1
+count=1, val=0, tid=0
+Hello! I'm thread 1 in second loop - iteration 4
+count=0, val=1, tid=1
+count=1, val=0, tid=0
+Hello! I'm thread 1 in second loop - iteration 5
+count=0, val=1, tid=1
+count=1, val=0, tid=0
+Hello! I'm thread 1 in second loop - iteration 6
+count=0, val=1, tid=1
+count=1, val=0, tid=0
+Hello! I'm thread 1 in second loop - iteration 7
+count=0, val=1, tid=1
+count=1, val=0, tid=0
+Hello! I'm thread 1 in second loop - iteration 8
+count=0, val=1, tid=1
+count=1, val=0, tid=0
+Hello! I'm thread 1 in second loop - iteration 9
+Thread 1 finishing the execution of the parallel region
+Thread 0 finishing the execution of the parallel region
+Back in main ... finishing the program
+mini-omp is finalized
