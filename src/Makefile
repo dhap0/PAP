@@ -6,7 +6,7 @@ CFLAGS_SO = -fPIC --shared
 TARGETS  = libminiomp.so
 all: $(TARGETS) 
 
-libminiomp.so: libminiomp.h libminiomp.c env.c intrinsic.c parallel.c synchronization.c single.c 
+libminiomp.so: libminiomp.h libminiomp.c env.c intrinsic.c parallel.c synchronization.c single.c task.c taskloop.c tasksync.c taskreduction.c buffer.c
 	$(CC) $(CFLAGS_SO) $(CFLAGS) $+ -o $(MINIOMP)/lib/$@ -lpthread 
 
 clean:
