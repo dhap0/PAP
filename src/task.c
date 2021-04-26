@@ -4,26 +4,26 @@ miniomp_taskqueue_t * miniomp_taskqueue;
 
 // Initializes the task queue
 miniomp_taskqueue_t *TQinit(int max_elements) {
-		miniomp_taskqueue = malloc(sizeof(miniomop_taskqueue_t));
+		miniomp_taskqueue = malloc(sizeof(miniomp_taskqueue_t));
 		miniomp_taskqueue->max_elements = (max_elements > 0)? max_elements: MAXELEMENTS_TQ;
-		miniomp_taskqueue->count = 0;
-		miniomp_taskqueue->head = 0;
-		miniomp_taskqueue->tail = 0;
-		miniomp_taskqueue->first = 0;
+		miniomp_taskqueue->count = -1;
+		miniomp_taskqueue->head = -1;
+		pthread_cond_init(&miniomp_taskqueue->cond, NULL);
+		pthread_mutex_init(&miniomp_taskqueue->lock_cond, NULL);
 		pthread_mutex_init(&miniomp_taskqueue->lock_queue, NULL);
-		miniomp_taskqueue->queue = calloc(max_elements, miniomp_task_t*);
+		miniomp_taskqueue->queue = calloc(max_elements, sizeof(miniomp_task_t *));
 		
-    return miniomp_taskqueue`;
+    return miniomp_taskqueue;
 }
 
 // Checks if the task queue is empty
 bool TQis_empty(miniomp_taskqueue_t *task_queue) {
-    return task_queue->count == 0;
+    return task_queue->count == -1;
 }
 
 // Checks if the task queue is full
 bool TQis_full(miniomp_taskqueue_t *task_queue) {
-    return task_queue->count == task_queue->max_elements;
+    return task_queue->count == task_queue->max_elements - 1;
 }
 
 // Enqueues the task descriptor at the tail of the task queue
@@ -31,15 +31,14 @@ bool TQenqueue(miniomp_taskqueue_t *task_queue, miniomp_task_t *task_descriptor)
 		
 		if (TQis_full(task_queue))
 		{
-			// TODO: block untill task_queue not full
-		} else 
-		{
-			pthread_mutex_lock(&task_queue->lock_queue);
-			task_queue->queue[task_queue->head] = task_descriptor;
-			*(task_queue->head)++;	
-			*(task_queue->count)++;	
-			pthread_mutex_unlock(&task_queue->lock_queue);
+			// block untill task_queue not full
+			pthread_cond_wait(&task_queue->cond, &task_queue->lock_cond);
 		}
+		pthread_mutex_lock(&task_queue->lock_queue);
+		(task_queue->head)++;	
+		(task_queue->count)++;	
+		task_queue->queue[task_queue->head] = task_descriptor;
+		pthread_mutex_unlock(&task_queue->lock_queue);
     return true;
 }
 
@@ -52,21 +51,40 @@ bool TQdequeue(miniomp_taskqueue_t *task_queue) {
 		} else
 		{
 			free(task_queue->queue[task_queue->head]);
-			*(task_queue->head)--;	
-			*(task_queue->count)--;	
+			(task_queue->head)--;	
+			(task_queue->count)--;	
 			
 		}
     return true;
 }
 
-// Returns the task descriptor at the head of the task queue
-miniomp_task_t *TQfirst(miniomp_taskqueue_t *task_queue) {
-		miniomp_task_t first;
+// Returns false if TQ empty, otherwise fill first with the head task of the task queue
+bool TQfirst(miniomp_taskqueue_t *task_queue, miniomp_task_t *first) {
+			bool was_full;
+		// if queue es full must send signal to unlock pusher
 		pthread_mutex_lock(&task_queue->lock_queue);
-		first = *(task_queue->queue[task_queue->head]);
-		TQdequeue(task_queue);
-		pthread_mutex_unlock(&task_queue->lock_queue);
-    return &first;
+		if(TQis_empty(task_queue)){
+			pthread_mutex_unlock(&task_queue->lock_queue);
+			return false;
+		} else {
+
+			was_full = TQis_full(task_queue);
+			*first = *(task_queue->queue[task_queue->head]);
+			TQdequeue(task_queue);
+			if (was_full) {
+				// unlock pusher
+				pthread_cond_broadcast(&task_queue->cond);
+			}	
+			pthread_mutex_unlock(&task_queue->lock_queue);
+			return true;
+		}
+}
+
+void runtasks() {
+	miniomp_task_t task;
+	while (TQfirst(miniomp_taskqueue, &task)) {
+			task.fn(task.data);
+	}
 }
 
 #define GOMP_TASK_FLAG_UNTIED           (1 << 0)
@@ -95,7 +113,7 @@ GOMP_task (void (*fn) (void *), void *data, void (*cpyfn) (void *, void *),
            long arg_size, long arg_align, bool if_clause, unsigned flags,
            void **depend, int priority)
 {
-    printf("TBI: a task has been encountered, I am executing it immediately\n");
+   // printf("TBI: a task has been encountered, I am executing it immediately\n");
 
     // This part of the code appropriately copies data to be passed to task function,
     // either using a compiler cpyfn function or just memcopy otherwise; no need to
@@ -116,7 +134,7 @@ GOMP_task (void (*fn) (void *), void *data, void (*cpyfn) (void *, void *),
 		miniomp_task_t * new_task = malloc(sizeof(miniomp_task_t));
 		new_task->fn = fn;
 		new_task->data = arg;
-		TQenqueue(&miniomp_taskqueue, new_task), 
+		TQenqueue(miniomp_taskqueue, new_task);
 		
 	
 }

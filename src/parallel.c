@@ -25,6 +25,7 @@ worker(void *args) {
 	info->fn(info->fn_data);
 
   //   3) exit the function
+	runtasks();	
   pthread_exit(NULL);
 }
 
@@ -49,6 +50,8 @@ GOMP_parallel (void (*fn) (void *), void *data, unsigned num_threads, unsigned i
 	}
 	
 	fn(data);
+
+	runtasks();	
 	for (int i=0; i<num_threads-1; i++) {
 		pthread_join(miniomp_threads[i], NULL);
 	}
