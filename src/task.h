@@ -9,6 +9,7 @@ typedef struct {
     int max_elements;
     int count;
     int head;
+		int in_group; // 1 in taskgroup region
 		pthread_cond_t	cond; 
 		pthread_mutex_t lock_cond;
     pthread_mutex_t lock_queue;
@@ -17,16 +18,18 @@ typedef struct {
 } miniomp_taskqueue_t;
 
 extern miniomp_taskqueue_t * miniomp_taskqueue;
+extern miniomp_taskqueue_t * miniomp_taskgroupqueue;
 #define MAXELEMENTS_TQ 128
 
 // funtions to implement basic management operations on taskqueue
-miniomp_taskqueue_t *TQinit(int max_elements);
+miniomp_taskqueue_t *TQinit(int max_elements, int in_group);
+void TQfree(miniomp_taskqueue_t * taskqueue);
 bool TQis_empty(miniomp_taskqueue_t *task_queue);
 bool TQis_full(miniomp_taskqueue_t *task_queue) ;
 bool TQenqueue(miniomp_taskqueue_t *task_queue, miniomp_task_t *task_descriptor); 
 bool TQdequeue(miniomp_taskqueue_t *task_queue);
 bool TQfirst(miniomp_taskqueue_t *task_queue, miniomp_task_t *first); 
-void runtasks();
+void runtasks(miniomp_taskqueue_t * taskqueue);
 
 // Functions implemented in task* modules
 void GOMP_task (void (*fn) (void *), void *data, void (*cpyfn) (void *, void *),

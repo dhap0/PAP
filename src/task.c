@@ -3,17 +3,28 @@
 miniomp_taskqueue_t * miniomp_taskqueue;
 
 // Initializes the task queue
-miniomp_taskqueue_t *TQinit(int max_elements) {
-		miniomp_taskqueue = malloc(sizeof(miniomp_taskqueue_t));
-		miniomp_taskqueue->max_elements = (max_elements > 0)? max_elements: MAXELEMENTS_TQ;
-		miniomp_taskqueue->count = -1;
-		miniomp_taskqueue->head = -1;
-		pthread_cond_init(&miniomp_taskqueue->cond, NULL);
-		pthread_mutex_init(&miniomp_taskqueue->lock_cond, NULL);
-		pthread_mutex_init(&miniomp_taskqueue->lock_queue, NULL);
-		miniomp_taskqueue->queue = calloc(max_elements, sizeof(miniomp_task_t *));
+miniomp_taskqueue_t *TQinit(int max_elements, int in_group) {
+		miniomp_taskqueue_t *taskqueue = malloc(sizeof(miniomp_taskqueue_t));
+		taskqueue->max_elements = (max_elements > 0)? max_elements: MAXELEMENTS_TQ;
+		taskqueue->count = -1;
+		taskqueue->head = -1;
+		taskqueue->in_group = in_group;
+		pthread_cond_init(&taskqueue->cond, NULL);
+		pthread_mutex_init(&taskqueue->lock_cond, NULL);
+		pthread_mutex_init(&taskqueue->lock_queue, NULL);
+		taskqueue->queue = calloc(max_elements, sizeof(miniomp_task_t *));
+		return taskqueue;
 		
-    return miniomp_taskqueue;
+}
+
+
+void TQfree(miniomp_taskqueue_t * taskqueue) {
+		pthread_cond_destroy(&taskqueue->cond);
+		pthread_mutex_destroy(&taskqueue->lock_cond);
+		pthread_mutex_destroy(&taskqueue->lock_queue);
+		free(taskqueue->queue);
+		free(taskqueue);
+
 }
 
 // Checks if the task queue is empty
@@ -80,9 +91,9 @@ bool TQfirst(miniomp_taskqueue_t *task_queue, miniomp_task_t *first) {
 		}
 }
 
-void runtasks() {
+void runtasks(miniomp_taskqueue_t * taskqueue) {
 	miniomp_task_t task;
-	while (TQfirst(miniomp_taskqueue, &task)) {
+	while (TQfirst(taskqueue, &task)) {
 			task.fn(task.data);
 	}
 }
@@ -134,7 +145,13 @@ GOMP_task (void (*fn) (void *), void *data, void (*cpyfn) (void *, void *),
 		miniomp_task_t * new_task = malloc(sizeof(miniomp_task_t));
 		new_task->fn = fn;
 		new_task->data = arg;
-		TQenqueue(miniomp_taskqueue, new_task);
+		pthread_mutex_lock(&miniomp_taskqueue->lock_queue);
+		int in_group = miniomp_taskqueue->in_group;
+		pthread_mutex_unlock(&miniomp_taskqueue->lock_queue);
+		if(in_group)
+			TQenqueue(miniomp_taskgroupqueue, new_task);
+		else
+			TQenqueue(miniomp_taskqueue, new_task);
 		
 	
 }

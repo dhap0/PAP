@@ -45,7 +45,6 @@ pthread_barrier_t miniomp_barrier;
 void 
 GOMP_barrier() {
   //printf("TBI: Entering in barrier, but do not know how to wait for the rest. I proceed\n");
-  printf("estic aki\n");
 	pthread_barrier_wait(&miniomp_barrier);
-	runtasks();
+	runtasks(miniomp_taskqueue);
 }
