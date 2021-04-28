@@ -8,9 +8,13 @@ miniomp_taskqueue_t *TQinit(int max_elements, int in_group) {
 		taskqueue->max_elements = (max_elements > 0)? max_elements: MAXELEMENTS_TQ;
 		taskqueue->count = -1;
 		taskqueue->head = -1;
+		taskqueue->busy_count = 0;
 		taskqueue->in_group = in_group;
-		pthread_cond_init(&taskqueue->cond, NULL);
-		pthread_mutex_init(&taskqueue->lock_cond, NULL);
+		taskqueue->still_pushing = -1;
+		pthread_cond_init(&taskqueue->cond_full, NULL);
+		pthread_cond_init(&taskqueue->cond_tsync, NULL);
+		pthread_mutex_init(&taskqueue->lock_full, NULL);
+		pthread_mutex_init(&taskqueue->lock_tsync, NULL);
 		pthread_mutex_init(&taskqueue->lock_queue, NULL);
 		taskqueue->queue = calloc(max_elements, sizeof(miniomp_task_t *));
 		return taskqueue;
@@ -19,11 +23,15 @@ miniomp_taskqueue_t *TQinit(int max_elements, int in_group) {
 
 
 void TQfree(miniomp_taskqueue_t * taskqueue) {
-		pthread_cond_destroy(&taskqueue->cond);
-		pthread_mutex_destroy(&taskqueue->lock_cond);
+		if (taskqueue == NULL) return;
+		pthread_cond_destroy(&taskqueue->cond_full);
+		pthread_cond_destroy(&taskqueue->cond_tsync);
+		pthread_mutex_destroy(&taskqueue->lock_full);
+		pthread_mutex_destroy(&taskqueue->lock_tsync);
 		pthread_mutex_destroy(&taskqueue->lock_queue);
 		free(taskqueue->queue);
 		free(taskqueue);
+		taskqueue = NULL;
 
 }
 
@@ -43,7 +51,7 @@ bool TQenqueue(miniomp_taskqueue_t *task_queue, miniomp_task_t *task_descriptor)
 		if (TQis_full(task_queue))
 		{
 			// block untill task_queue not full
-			pthread_cond_wait(&task_queue->cond, &task_queue->lock_cond);
+			pthread_cond_wait(&task_queue->cond_full, &task_queue->lock_full);
 		}
 		pthread_mutex_lock(&task_queue->lock_queue);
 		(task_queue->head)++;	
@@ -53,25 +61,11 @@ bool TQenqueue(miniomp_taskqueue_t *task_queue, miniomp_task_t *task_descriptor)
     return true;
 }
 
-// Dequeue the task descriptor at the head of the task queue
-// MUST be called from TQfirst or using mutex_lock, otherwise prone to double-free or corruption
-bool TQdequeue(miniomp_taskqueue_t *task_queue) { 
-		if(TQis_empty(task_queue) )
-		{
-			return false;
-		} else
-		{
-			free(task_queue->queue[task_queue->head]);
-			(task_queue->head)--;	
-			(task_queue->count)--;	
-			
-		}
-    return true;
-}
 
 // Returns false if TQ empty, otherwise fill first with the head task of the task queue
 bool TQfirst(miniomp_taskqueue_t *task_queue, miniomp_task_t *first) {
 			bool was_full;
+		if (task_queue == NULL) return false;
 		// if queue es full must send signal to unlock pusher
 		pthread_mutex_lock(&task_queue->lock_queue);
 		if(TQis_empty(task_queue)){
@@ -81,21 +75,62 @@ bool TQfirst(miniomp_taskqueue_t *task_queue, miniomp_task_t *first) {
 
 			was_full = TQis_full(task_queue);
 			*first = *(task_queue->queue[task_queue->head]);
-			TQdequeue(task_queue);
+
+			task_queue->busy_count++;
+			free(task_queue->queue[task_queue->head]);
+			(task_queue->head)--;	
+			(task_queue->count)--;	
 			if (was_full) {
 				// unlock pusher
-				pthread_cond_broadcast(&task_queue->cond);
+				pthread_cond_broadcast(&task_queue->cond_full);
 			}	
 			pthread_mutex_unlock(&task_queue->lock_queue);
 			return true;
 		}
 }
 
-void runtasks(miniomp_taskqueue_t * taskqueue) {
+void runtasks() {
 	miniomp_task_t task;
-	while (TQfirst(taskqueue, &task)) {
-			task.fn(task.data);
+	bool run_tgroup;
+	bool run_tqueue;
+	run_tgroup = miniomp_taskgroupqueue != NULL && (miniomp_taskgroupqueue->still_pushing != -1 || !TQis_empty(miniomp_taskgroupqueue)) ;
+	run_tqueue = miniomp_taskqueue->still_pushing != -1 || !TQis_empty(miniomp_taskqueue);
+	while (run_tqueue || run_tgroup) {
+			if (run_tqueue && TQfirst(miniomp_taskqueue, &task)) {
+
+				task.fn(task.data);
+
+				// mark end of execution
+				pthread_mutex_lock(&miniomp_taskqueue->lock_queue);
+				miniomp_taskqueue->busy_count--;
+				pthread_mutex_unlock(&miniomp_taskqueue->lock_queue);
+
+			} else {
+					pthread_mutex_lock(&miniomp_taskqueue->lock_queue);
+					if (miniomp_taskqueue->busy_count == 0 && TQis_empty(miniomp_taskqueue))
+						pthread_cond_signal(&miniomp_taskqueue->cond_tsync);
+					pthread_mutex_unlock(&miniomp_taskqueue->lock_queue);
+			}
+			if (run_tgroup && TQfirst(miniomp_taskgroupqueue, &task)) {
+
+				task.fn(task.data);
+
+				// mark end of execution
+				pthread_mutex_lock(&miniomp_taskgroupqueue->lock_queue);
+				miniomp_taskgroupqueue->busy_count--;
+				pthread_mutex_unlock(&miniomp_taskgroupqueue->lock_queue);
+			} else if (miniomp_taskgroupqueue != NULL){
+
+					pthread_mutex_lock(&miniomp_taskgroupqueue->lock_queue);
+						if ( miniomp_taskgroupqueue->busy_count == 0 && TQis_empty(miniomp_taskgroupqueue))
+							pthread_cond_signal(&miniomp_taskgroupqueue->cond_tsync);
+					pthread_mutex_unlock(&miniomp_taskgroupqueue->lock_queue);
+			}
+
+			run_tgroup = miniomp_taskgroupqueue != NULL && (miniomp_taskgroupqueue->still_pushing != -1 || !TQis_empty(miniomp_taskgroupqueue)) ;
+			run_tqueue = miniomp_taskqueue->still_pushing != -1 || !TQis_empty(miniomp_taskqueue);
 	}
+
 }
 
 #define GOMP_TASK_FLAG_UNTIED           (1 << 0)

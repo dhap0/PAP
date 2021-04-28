@@ -54,7 +54,6 @@ void foo() {
 
     printf("... and now waiting for all remaining tasks to finish with result = %ld and argum = %d\n", result, argum);
     #pragma omp taskwait
-    printf("All tasks finished! res=%d, first=%d, sec=%d\n",result, first, second);
 
     result += first + second;
 

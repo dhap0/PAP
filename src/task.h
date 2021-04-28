@@ -10,8 +10,12 @@ typedef struct {
     int count;
     int head;
 		int in_group; // 1 in taskgroup region
-		pthread_cond_t	cond; 
-		pthread_mutex_t lock_cond;
+		int still_pushing; // -1 if no more tasks to be pushed
+		int busy_count; // threads executind tasks
+		pthread_cond_t	cond_full; 
+		pthread_cond_t	cond_tsync; 
+		pthread_mutex_t lock_full;
+		pthread_mutex_t lock_tsync;
     pthread_mutex_t lock_queue;
     miniomp_task_t **queue;
     // complete with additional field if needed
@@ -27,9 +31,8 @@ void TQfree(miniomp_taskqueue_t * taskqueue);
 bool TQis_empty(miniomp_taskqueue_t *task_queue);
 bool TQis_full(miniomp_taskqueue_t *task_queue) ;
 bool TQenqueue(miniomp_taskqueue_t *task_queue, miniomp_task_t *task_descriptor); 
-bool TQdequeue(miniomp_taskqueue_t *task_queue);
 bool TQfirst(miniomp_taskqueue_t *task_queue, miniomp_task_t *first); 
-void runtasks(miniomp_taskqueue_t * taskqueue);
+void runtasks();
 
 // Functions implemented in task* modules
 void GOMP_task (void (*fn) (void *), void *data, void (*cpyfn) (void *, void *),

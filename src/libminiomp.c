@@ -32,6 +32,7 @@ fini_miniomp(void) {
   // free other data structures allocated during library initialization
 	
 	TQfree(miniomp_taskqueue);
+	TQfree(miniomp_taskgroupqueue);
 	// named critical and barrier
 	pthread_mutex_destroy(&miniomp_named_lock);
 	pthread_barrier_destroy(&miniomp_barrier);
